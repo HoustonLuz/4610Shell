@@ -29,8 +29,10 @@ int main() {
 	instr.tokens = NULL;
 	instr.numTokens = 0;
 
+	int exitFlag = 0;
+	int numOfCommands = 0;
 
-	while (1) {
+	while (exitFlag == 0) {
 		printf("%s@%s:%s> ", getenv("USER"), getenv("MACHINE"), getenv("PWD"));
 
 		// loop reads character sequences separated by whitespace
@@ -78,10 +80,17 @@ int main() {
 
 //		printTokens(&instr);
 
-
+		if(strcmp(instr.tokens[0],"exit") == 0){
+			exitFlag = 1;
+		}
 
 		clearInstruction(&instr);
+
+		numOfCommands++;
 	}
+
+	printf("Exiting now!\n");
+	printf( "   Commands executed: %d\n", numOfCommands);
 
 	return 0;
 }
