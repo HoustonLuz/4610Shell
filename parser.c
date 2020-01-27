@@ -5,10 +5,11 @@
 //*** if any problems are found with this code,
 //*** please report them to the TA
 
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
+#include <unistd.h>
 
 typedef struct
 {
@@ -20,6 +21,9 @@ void addToken(instruction* instr_ptr, char* tok);
 void printTokens(instruction* instr_ptr);
 void clearInstruction(instruction* instr_ptr);
 void addNull(instruction* instr_ptr);
+
+//void cd(instruction* instr);
+char* resolvePath(char* path);
 
 int main() {
 	char* token = NULL;
@@ -80,8 +84,16 @@ int main() {
 
 //		printTokens(&instr);
 
-		if(strcmp(instr.tokens[0],"exit") == 0){
+		if(strcmp(instr.tokens[0],"exit") == 0
+		   || strcmp(instr.tokens[0],"x") == 0){
+			//My own preference is that x is aliased to exit.
+			//x leading to exit should not be in final turn in.
+
 			exitFlag = 1;
+		} else {
+			//In this iteration I focused on path res so all
+			// non-exits will be resolved.
+			printf("%s\n", resolvePath(instr.tokens[0]));
 		}
 
 		clearInstruction(&instr);
@@ -90,10 +102,70 @@ int main() {
 	}
 
 	printf("Exiting now!\n");
-	printf( "   Commands executed: %d\n", numOfCommands);
+	printf("   Commands executed: %d\n", numOfCommands);
 
 	return 0;
 }
+
+char* resolvePath(char* path)
+{
+	//Since I chose to just return the resolved path, I needed to make
+	// the string static and deallocate it it isn't null.
+	//If I didn't do this, I think it would create a memory leak if
+	// this function was called enough times.
+
+	static char* resPath;
+	int i;
+
+	if(resPath != NULL){
+		free(resPath);
+		resPath = 0;
+	}
+
+	if (path[0] == '~') {
+		resPath = (char*) malloc
+		((strlen(path) + strlen(getenv("HOME")) + 1) * sizeof(char));
+
+		strcpy(resPath, getenv("HOME"));
+		strcat(resPath, path);
+
+		for(i = strlen(getenv("HOME"));i < strlen(resPath);i++){
+
+			resPath[i] = resPath[i+1];
+
+		}
+
+		return resPath;
+	} else if (path[0] == '/') {
+
+		return path;
+
+	} else if (strstr(path, "/../") != NULL
+		|| strstr(path,  "../") != NULL
+		|| strstr(path,  "/..") != NULL){
+
+		return ".. path";		
+
+	} else if (strstr(path, "/./") != NULL
+		|| strstr(path,  "./") != NULL
+		|| strstr(path,  "/.") != NULL){
+
+		return ". path";		
+
+	} else {
+		resPath = (char*) malloc
+		((strlen(path) + strlen(getenv("PWD")) + 2) * sizeof(char));
+
+		strcpy(resPath, getenv("PWD"));
+
+		strcat(resPath, "/");
+		strcat(resPath, path);
+
+		return resPath;
+
+	}
+}
+
 
 //reallocates instruction array to hold another token
 //allocates for new token within instruction array
