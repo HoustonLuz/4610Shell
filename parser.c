@@ -90,32 +90,34 @@ int main() {
 			//x leading to exit should not be in final turn in.
 
 			exitFlag = 1;
+
+		// echo
+		} else if(strcmp(instr.tokens[0],"echo") == 0){
+			if(instr.tokens[1][0] != '$'){
+				// print all remaining tokens after echo until end of string
+				int t = 1;     // token counter
+				do {
+					printf("%s ", instr.tokens[t]);
+					t++;
+				} while(instr.tokens[t] != '\0');    // until last token
+				putchar('\n');
+			} else {
+				// discard $ in arguement string and print if EV exists
+				memmove(instr.tokens[1], instr.tokens[1] + 1, strlen(instr.tokens[1]));
+				if(getenv(instr.tokens[1]))
+					printf("%s\n", getenv(instr.tokens[1]));
+				else
+					printf("%s: Undefined variable.\n", instr.tokens[1]);
+			}
+		// end echo
+
+
 		} else {
 			//In this iteration I focused on path res so all
 			// non-exits will be resolved.
 			printf("%s\n", resolvePath(instr.tokens[0]));
 		}
 
-      // echo
-      if(strcmp(instr.tokens[0],"echo") == 0){
-         if(instr.tokens[1][0] != '$'){
-            // print all remaining tokens after echo until end of string
-            int t = 1;     // token counter
-            do {
-               printf("%s ", instr.tokens[t]);
-               t++;
-            } while(instr.tokens[t] != '\0');    // until last token
-            putchar('\n');
-         }
-         else{
-            // discard $ in arguement string and print if EV exists
-            memmove(instr.tokens[1], instr.tokens[1] + 1, strlen(instr.tokens[1]));
-            if(getenv(instr.tokens[1]))
-               printf("%s\n", getenv(instr.tokens[1]));
-            else
-               printf("%s: Undefined variable.\n", instr.tokens[1]);
-         }
-      } // end echo
 
 		clearInstruction(&instr);
 
@@ -131,14 +133,14 @@ int main() {
 char* resolvePath(char* path)
 {
 	//Since I chose to just return the resolved path, I needed to make
-	// the string static and deallocate it it isn't null.
+	// the string static and deallocate if it isn't null.
 	//If I didn't do this, I think it would create a memory leak if
 	// this function was called enough times.
 
 	static char* resPath;
-	int i;
+	int i, count;
 
-	if(resPath != NULL){
+	if(resPath != 0){
 		free(resPath);
 		resPath = 0;
 	}
@@ -161,18 +163,63 @@ char* resolvePath(char* path)
 
 		return path;
 
-	} else if (strstr(path, "/../") != NULL
-		|| strstr(path,  "../") != NULL
-		|| strstr(path,  "/..") != NULL){
+	} else if (strstr(path,  "../") != 0) {
+		int removedStrLen, j;
 
-		return ".. path";		
+		resPath = (char*) malloc((strlen(path) + 1) * sizeof(char));
+		strcpy(resPath, path);
 
-	} else if (strstr(path, "/./") != NULL
-		|| strstr(path,  "./") != NULL
-		|| strstr(path,  "/.") != NULL){
+		count = 0;
+		do {
+			for(i = 0;i < strlen(resPath) - 2;i++){
+				resPath[i] = resPath[i + 3];
+			}
+			count++;
+		} while (strstr(resPath, "../") != 0);
 
-		return ". path";		
+		free(resPath);
+		resPath = (char*) malloc
+		((strlen(getenv("PWD")) + 1) * sizeof(char));
 
+		strcpy(resPath, getenv("PWD"));
+
+		i = 0;
+		do {
+			if(resPath[strlen(resPath) - 1] == '/')
+				i++;
+
+			resPath[strlen(resPath) - 1] = resPath[strlen(resPath)];
+		} while (i < count);
+		removedStrLen = strlen(resPath);
+
+		strcat(resPath, "/");
+		strcat(resPath, path);
+
+		for(i = 0;i < count;i++){
+			for(j = removedStrLen;j < strlen(resPath) - 2;j++){
+				resPath[j] = resPath[j + 3];
+			}
+		}
+
+		return resPath;
+
+	} else if (strstr(path,  "./") != 0
+		|| strcmp(path, ".")   == 0   ) {
+
+		if(strcmp(path, ".") == 0) {
+			return getenv("PWD");
+		} else {
+			resPath = (char*) malloc
+			((strlen(path) + strlen(getenv("PWD")) + 1) * sizeof(char));
+
+			strcpy(resPath, getenv("PWD"));
+			strcat(resPath, path);
+
+			for(i = strlen(getenv("PWD"));i < strlen(resPath);i++){
+				resPath[i] = resPath[i+1];
+			}
+			return resPath;
+		}
 	} else {
 		resPath = (char*) malloc
 		((strlen(path) + strlen(getenv("PWD")) + 2) * sizeof(char));
