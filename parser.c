@@ -96,6 +96,27 @@ int main() {
 			printf("%s\n", resolvePath(instr.tokens[0]));
 		}
 
+      // echo
+      if(strcmp(instr.tokens[0],"echo") == 0){
+         if(instr.tokens[1][0] != '$'){
+            // print all remaining tokens after echo until end of string
+            int t = 1;     // token counter
+            do {
+               printf("%s ", instr.tokens[t]);
+               t++;
+            } while(instr.tokens[t] != '\0');    // until last token
+            putchar('\n');
+         }
+         else{
+            // discard $ in arguement string and print if EV exists
+            memmove(instr.tokens[1], instr.tokens[1] + 1, strlen(instr.tokens[1]));
+            if(getenv(instr.tokens[1]))
+               printf("%s\n", getenv(instr.tokens[1]));
+            else
+               printf("%s: Undefined variable.\n", instr.tokens[1]);
+         }
+      } // end echo
+
 		clearInstruction(&instr);
 
 		numOfCommands++;
