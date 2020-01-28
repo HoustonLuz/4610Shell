@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
 #include <unistd.h>
 
 typedef struct
@@ -36,8 +35,10 @@ int main() {
 	int exitFlag = 0;
 	int numOfCommands = 0;
 
+	char cwd[256];
+
 	while (exitFlag == 0) {
-		printf("%s@%s:%s> ", getenv("USER"), getenv("MACHINE"), getenv("PWD"));
+		printf("%s@%s:%s> ", getenv("USER"), getenv("MACHINE"), getcwd(cwd, 255));
 
 		// loop reads character sequences separated by whitespace
 		do {
@@ -109,10 +110,21 @@ int main() {
 				else
 					printf("%s: Undefined variable.\n", instr.tokens[1]);
 			}
+		}
 		// end echo
 
 
-		} else {
+
+		// cd
+		else if(strcmp(instr.tokens[0],"cd") == 0){
+			if(chdir(resolvePath(instr.tokens[1])) != 0)
+				perror(resolvePath(instr.tokens[1]));
+		}
+		// end cd
+
+
+
+		else {
 			//In this iteration I focused on path res so all
 			// non-exits will be resolved.
 			printf("%s\n", resolvePath(instr.tokens[0]));
@@ -140,6 +152,10 @@ char* resolvePath(char* path)
 	static char* resPath;
 	int i, count;
 
+	static char cwd[256];
+
+	getcwd(cwd, 255);
+
 	if(resPath != 0){
 		free(resPath);
 		resPath = 0;
@@ -163,6 +179,17 @@ char* resolvePath(char* path)
 
 		return path;
 
+	} else if (strcmp(path,  "..") == 0) {
+		resPath = (char *) malloc((strlen(cwd) + 1) * sizeof(char));
+
+		strcpy(resPath, cwd);
+
+		while (resPath[strlen(resPath) -1] != '/'){
+			resPath[strlen(resPath) - 1] = resPath[strlen(resPath)];
+		}
+
+		return resPath;
+
 	} else if (strstr(path,  "../") != 0) {
 		int removedStrLen, j;
 
@@ -177,11 +204,15 @@ char* resolvePath(char* path)
 			count++;
 		} while (strstr(resPath, "../") != 0);
 
+		if(strcmp(resPath, "..") == 0){
+			count++;
+		}
+
 		free(resPath);
 		resPath = (char*) malloc
-		((strlen(getenv("PWD")) + 1) * sizeof(char));
+		((strlen(cwd) + 1) * sizeof(char));
 
-		strcpy(resPath, getenv("PWD"));
+		strcpy(resPath, cwd);
 
 		i = 0;
 		do {
@@ -207,24 +238,24 @@ char* resolvePath(char* path)
 		|| strcmp(path, ".")   == 0   ) {
 
 		if(strcmp(path, ".") == 0) {
-			return getenv("PWD");
+			return cwd;
 		} else {
 			resPath = (char*) malloc
-			((strlen(path) + strlen(getenv("PWD")) + 1) * sizeof(char));
+			((strlen(path) + strlen(cwd) + 1) * sizeof(char));
 
-			strcpy(resPath, getenv("PWD"));
+			strcpy(resPath, cwd);
 			strcat(resPath, path);
 
-			for(i = strlen(getenv("PWD"));i < strlen(resPath);i++){
+			for(i = strlen(cwd);i < strlen(resPath);i++){
 				resPath[i] = resPath[i+1];
 			}
 			return resPath;
 		}
 	} else {
 		resPath = (char*) malloc
-		((strlen(path) + strlen(getenv("PWD")) + 2) * sizeof(char));
+		((strlen(path) + strlen(cwd) + 2) * sizeof(char));
 
-		strcpy(resPath, getenv("PWD"));
+		strcpy(resPath, cwd);
 
 		strcat(resPath, "/");
 		strcat(resPath, path);
