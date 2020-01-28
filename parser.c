@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/types.h>
 
 typedef struct
 {
@@ -21,8 +22,8 @@ void printTokens(instruction* instr_ptr);
 void clearInstruction(instruction* instr_ptr);
 void addNull(instruction* instr_ptr);
 
-//void cd(instruction* instr);
 char* resolvePath(char* path);
+void execute(char **cmd);
 
 int main() {
 	char* token = NULL;
@@ -133,31 +134,32 @@ int main() {
                printf("%s\n", str);
             }
          }
+			free(str);
       } // end echo
-
 
 		// cd
 		else if(strcmp(instr.tokens[0],"cd") == 0){
 			if(chdir(resolvePath(instr.tokens[1])) != 0)
 				perror(resolvePath(instr.tokens[1]));
+		}		// end cd
+
+		//execution
+		else{
+			execute(instr.tokens);
 		}
-		// end cd
 
-
-
+/*
 		else {
 			//In this iteration I focused on path res so all
 			// non-exits will be resolved.
 			printf("%s\n", resolvePath(instr.tokens[0]));
 		}
-
+*/
 
 		clearInstruction(&instr);
 
 		numOfCommands++;
 	}
-
-	free(str);
 
 	printf("Exiting now!\n");
 	printf("   Commands executed: %d\n", numOfCommands);
@@ -288,6 +290,26 @@ char* resolvePath(char* path)
 	}
 }
 
+// execution
+void execute(char **cmd){
+	int status;
+	pid_t pid = fork();
+	if(pid == -1){
+		// Error
+		printf("ERROR\n");
+		exit(1);
+	}
+	else if (pid == 0){
+		// Child
+		execv(cmd[0], cmd);
+		printf("Problem executing %s\n", cmd[0]);
+		exit(1);
+	}
+	else{
+		// Parent
+		waitpid(pid, &status, 0);
+	}
+}
 
 //reallocates instruction array to hold another token
 //allocates for new token within instruction array
