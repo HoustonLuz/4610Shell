@@ -23,6 +23,7 @@ void clearInstruction(instruction* instr_ptr);
 void addNull(instruction* instr_ptr);
 
 char* resolvePath(char* path);
+char* resolveExec(char* path);
 void execute(char **cmd);
 
 int main() {
@@ -140,7 +141,7 @@ int main() {
 		// cd
 		else if(strcmp(instr.tokens[0],"cd") == 0){
 			if(chdir(resolvePath(instr.tokens[1])) != 0)
-				perror(resolvePath(instr.tokens[1]));
+			perror(resolvePath(instr.tokens[1]));
 		}		// end cd
 
 		//execution
@@ -148,13 +149,6 @@ int main() {
 			execute(instr.tokens);
 		}
 
-/*
-		else {
-			//In this iteration I focused on path res so all
-			// non-exits will be resolved.
-			printf("%s\n", resolvePath(instr.tokens[0]));
-		}
-*/
 
 		clearInstruction(&instr);
 
@@ -165,6 +159,61 @@ int main() {
 	printf("   Commands executed: %d\n", numOfCommands);
 
 	return 0;
+}
+
+char* resolveExec(char* path)
+{
+	static char* resExec;
+	char* paths = getenv("PATH");
+	int i, j;
+
+	if(resExec != 0){
+		free(resExec);
+		resExec = 0;
+	}
+
+	if(strstr(path, "/") != 0){
+		resExec = (char*) malloc
+		((strlen(resolvePath(path)) + 1) * sizeof(char));
+		strcpy(resExec, resolvePath(path));
+		return resExec;
+	} else {
+		resExec = (char*) malloc
+		((strlen(getenv("PATH")) + 1) * sizeof(char));
+
+		i = 0;
+		j = 0;
+		do {
+			resExec[j] = paths[i];
+			i++;
+			j++;
+			if(paths[i - 1] == ':'){
+				resExec[j - 1] = '\0';
+				strcat(resExec, "/");
+				strcat(resExec, path);
+
+				if(checkFileExist(resExec) == 1){
+					return resExec;
+				} else {
+					j = 0;
+				}
+			}
+		} while (i < strlen(getenv("PATH")));
+
+		return resolvePath(path);
+	}
+}
+
+int checkFileExist(char* path)
+{
+	FILE *check;
+
+	if(check = fopen(path, "r")){
+		fclose(check);
+		return 1;
+	} else {
+		return 0;
+	}
 }
 
 char* resolvePath(char* path)
@@ -301,7 +350,7 @@ void execute(char **cmd){
 	}
 	else if (pid == 0){
 		// Child
-		execv(cmd[0], cmd);
+		execv(resolveExec(cmd[0]), cmd);
 		printf("Problem executing %s\n", cmd[0]);
 		exit(1);
 	}
