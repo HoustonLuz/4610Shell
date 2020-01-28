@@ -36,6 +36,7 @@ int main() {
 	int numOfCommands = 0;
 
 	char cwd[256];
+	static char* str = NULL;
 
 	while (exitFlag == 0) {
 		printf("%s@%s:%s> ", getenv("USER"), getenv("MACHINE"), getcwd(cwd, 255));
@@ -92,27 +93,47 @@ int main() {
 
 			exitFlag = 1;
 
-		// echo
-		} else if(strcmp(instr.tokens[0],"echo") == 0){
-			if(instr.tokens[1][0] != '$'){
-				// print all remaining tokens after echo until end of string
-				int t = 1;     // token counter
-				do {
-					printf("%s ", instr.tokens[t]);
-					t++;
-				} while(instr.tokens[t] != '\0');    // until last token
-				putchar('\n');
-			} else {
-				// discard $ in arguement string and print if EV exists
-				memmove(instr.tokens[1], instr.tokens[1] + 1, strlen(instr.tokens[1]));
-				if(getenv(instr.tokens[1]))
-					printf("%s\n", getenv(instr.tokens[1]));
-				else
-					printf("%s: Undefined variable.\n", instr.tokens[1]);
-			}
-		}
-		// end echo
-
+      } else if(strcmp(instr.tokens[0],"echo") == 0){
+         str = (char*) calloc(instr.numTokens * (strlen(instr.tokens[0]) + 1), sizeof(char));
+         int t = 1, q = 0;    // token and quotation counter
+         if(instr.numTokens == 2)
+            putchar('\n');
+         else{
+            do {     // loop through each remaining token
+               if(instr.tokens[t][0] == '"'){
+                  memmove(instr.tokens[t], instr.tokens[t] + 1, strlen(instr.tokens[t]));
+                  q++;
+               }
+               if(instr.tokens[t][strlen(instr.tokens[t]) - 1] == '"'){
+                  instr.tokens[t][strlen(instr.tokens[t]) - 1] = '\0';
+                  q++;
+               }
+               if(instr.tokens[t][0] != '$'){
+                  strcat(str, " ");
+                  strcat(str, instr.tokens[t]);
+               }
+               else{
+                  // discard $ in arguement string and print if EV exists
+                  memmove(instr.tokens[t], instr.tokens[t] + 1, strlen(instr.tokens[t]));
+                  if(getenv(instr.tokens[t])){
+                     strcat(str, " ");
+                     strcat(str, getenv(instr.tokens[t]));
+                  }
+                  else{
+                     printf("%s: Undefined variable.\n", instr.tokens[t]);
+                     break;
+                  }
+               }
+               t++;
+            } while(instr.tokens[t] != '\0');   // until last token
+            if(q % 2)
+               printf("Unmatched \".\n");
+            else{
+               memmove(str, str + 1, strlen(str));
+               printf("%s\n", str);
+            }
+         }
+      } // end echo
 
 
 		// cd
@@ -135,6 +156,8 @@ int main() {
 
 		numOfCommands++;
 	}
+
+	free(str);
 
 	printf("Exiting now!\n");
 	printf("   Commands executed: %d\n", numOfCommands);
