@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <fcntl.h>
 
 typedef struct
 {
@@ -27,6 +28,7 @@ char* resolveExec(char* path);
 void executep(char **cmd);
 void execute(char **cmd);
 
+void Redirect(instruction* instr);
 void Pipe(instruction* instr, int numPipes);
 
 int main() {
@@ -196,7 +198,7 @@ int main() {
 					Pipe(&instr, numPipes);
 				}
 			} else if (redirectFlag == 1) {
-				printf("To be implemented.\n");
+				Redirect(&instr);
 			} else if (groundFlag == 1) {
 				printf("To be implemented.\n");
 			} else{
@@ -240,6 +242,74 @@ void execute(char **cmd){
 }
 */
 
+void Redirect(instruction* instr)
+{
+   int numIn = 0, numOut = 0;
+   int t = 0;
+   int numRedir;
+
+   do{
+      if(strcmp(instr->tokens[t],">") == 0)
+         numOut++;
+      if(strcmp(instr->tokens[t],"<") == 0)
+         numIn++;
+      t++;
+   } while(instr->tokens[t] != '\0');
+
+   numRedir = numIn + numOut;
+
+   if((numIn > 1) || (numOut > 1)){
+      printf("Error: Too many redirections\n");
+      return;
+   }                             
+
+   t = 0;
+
+   // error check first
+   do{
+      if((strcmp(instr->tokens[t],">") == 0) ||
+         (strcmp(instr->tokens[t],"<") == 0)){
+         if((instr->tokens[t+1] == '\0') || t == 0){
+            printf("Error: Invalid syntax\n");
+            break;
+         }                             
+      }       
+      t++;                                   
+   } while(instr->tokens[t] != '\0');
+
+   // fork process and loop until end of redirections
+   int fd0, fd1;        
+   int pid = fork();
+   if(pid < 0)
+      perror("fork");
+   else if (pid == 0){
+      t = 1; 
+      do{
+         if(strcmp(instr->tokens[t],"<") == 0){
+            fd0 = open(resolvePath(instr->tokens[t+1]), O_RDONLY);
+            close(0);
+            dup(3);
+            close(3);
+            instr->tokens[t] = '\0';
+            numRedir--;
+         }
+         else if(strcmp(instr->tokens[t],">") == 0){
+            fd1 = open(resolvePath(instr->tokens[t+1]), O_RDWR|O_CREAT|O_TRUNC);
+            close(1);
+            dup(3);
+            close(3);
+            instr->tokens[t] = '\0';
+            numRedir--;
+         }
+         t++;
+      } while(numRedir > 0);
+      execute(instr->tokens);
+      exit(1);
+   }
+   else
+      wait();
+}
+
 
 void Pipe(instruction* instr, int numPipes)
 {
@@ -247,7 +317,7 @@ void Pipe(instruction* instr, int numPipes)
 	//"No more than two pipes will appear in a single line"
 
 	int fd1[2];
-	int fd2[4];
+	int fd2[2];
 	instruction instrs[3];
 	int i, j;
 	pid_t pids[3];
@@ -258,9 +328,7 @@ void Pipe(instruction* instr, int numPipes)
 		return;
 	}
 
-	printf("numPipes - %d\n", numPipes);
-
-	for(i = 0;i < 2;i++){
+	for(i = 0;i < 3;i++){
 		instrs[i].tokens = NULL;
 		instrs[i].numTokens = 0;
 	}
@@ -282,10 +350,6 @@ void Pipe(instruction* instr, int numPipes)
 		i++;
 	} while (i < instr->numTokens - 1);
 	addNull(&instrs[j]);
-
-	for(i = 0;i < numPipes + 1;i++){
-		printTokens(&instrs[i]);
-	}
 
 	
 	//Code from slides for actual execution.
