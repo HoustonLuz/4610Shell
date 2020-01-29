@@ -31,11 +31,10 @@ How to compile executables:
 
 Known bugs:
 	-echo spaces (runtime): typing echo followed by spaces will parse until the next token is typed, and will not print properly
-	-alias
-	-double pipes
+	-alias is a built in bash, and alias was not included in the built ins we needed to make, so we didn't make it.
 
 Unfinished sections:
-
+	-double pipes
 
 Extra credit:
 	-Shell-ception: Our shell can continue to run the shell until exiting each one

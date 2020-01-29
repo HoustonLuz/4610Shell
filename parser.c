@@ -94,10 +94,7 @@ int main() {
 
 		addNull(&instr);
 
-		if(strcmp(instr.tokens[0],"exit") == 0
-		   || strcmp(instr.tokens[0],"x") == 0){
-			//My own preference is that x is aliased to exit.
-			//x leading to exit should not be in final turn in.
+		if(strcmp(instr.tokens[0],"exit") == 0){
 
 			exitFlag = 1;
 
@@ -218,30 +215,6 @@ int main() {
 	return 0;
 }
 
-/*
-// execution
-void execute(char **cmd){
-	int status;
-	pid_t pid = fork();
-
-	if(pid == -1){
-		// Error
-		printf("ERROR\n");
-		exit(1);
-	}
-	else if (pid == 0){
-		// Child
-		execv(resolveExec(cmd[0]), cmd);
-		printf("Problem executing %s\n", cmd[0]);
-		exit(1);
-	}
-	else{
-		// Parent
-		waitpid(pid, &status, 0);
-	}
-}
-*/
-
 void Redirect(instruction* instr)
 {
    int numIn = 0, numOut = 0;
@@ -340,7 +313,7 @@ void Pipe(instruction* instr, int numPipes)
 			addToken(&instrs[j], instr->tokens[i]);
 			i++;
 		} while (strcmp(instr->tokens[i], "|") != 0);
-		addNull(&instrs[0]);
+		addNull(&instrs[j]);
 
 		i++;
 	}
@@ -385,15 +358,57 @@ void Pipe(instruction* instr, int numPipes)
 		waitpid(pids[1], &status, 0);
 
 	} else if(numPipes == 2){
-		/*
+		pipe(fd1);
+		pipe(fd2);
+
+		pids[0] = fork();
+		if(pids[0] = 0){
+
+			pids[1] = fork();
+			if(pids[1] == 0){
+
+				pids[2] = fork();
+				if(pids[2] == 0){
+					//cmd 1 (Writer)
+					close(1);
+					dup(fd1[1]);
+					close(fd1[0]);
+					close(fd1[1]);
+					execvp(resolveExec(instrs[0].tokens[0]), instrs[0].tokens);
+				}
+				else {
+					//cmd 2 (Writer and Reader)
+					close(1);
+					dup(fd2[1]);
+					close(0);
+					dup(fd1[0]);
+					close(fd1[1]);
+					close(fd2[0]);
+					execvp(resolveExec(instrs[1].tokens[0]), instrs[1].tokens);
+				}
+			} else {
+				//cmd 3 (Reader)
+				close(0);
+				dup(fd2[0]);
+				close(fd2[0]);
+				close(fd2[1]);
+				execvp(resolveExec(instrs[2].tokens[0]), instrs[2].tokens);
+			}
+		} else {
+			//parent
+
+			close(fd2[0]);
+			close(fd2[1]);
+			close(fd1[0]);
+			close(fd1[1]);
+		}
 		waitpid(pids[0], &status, 0);
 		waitpid(pids[1], &status, 0);
 		waitpid(pids[2], &status, 0);
-		*/
 	}
 
 
-	for(i = 0;i < 2;i++)
+	for(i = 0;i < 3;i++)
 		clearInstruction(&instrs[i]);
 
 }
@@ -633,9 +648,8 @@ void printTokens(instruction* instr_ptr)
 	printf("Tokens:\n");
 	for (i = 0; i < instr_ptr->numTokens; i++) {
 		if ((instr_ptr->tokens)[i] != NULL)
-			printf("%s\t", (instr_ptr->tokens)[i]);
+			printf("%s\n", (instr_ptr->tokens)[i]);
 	}
-	printf("\n%d - numTokens\n", instr_ptr->numTokens);
 }
 
 void clearInstruction(instruction* instr_ptr)
