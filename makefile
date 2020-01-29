@@ -8,6 +8,8 @@ shell : parser.c
 clean:
 	rm -f shell
 	rm -f *.tar
+	rm -f *.txt
 
 tar:
-	tar -cf project1_luzader_matulonis.tar README.md makefile parser.c
+	git log > log.txt
+	tar -cf project1_luzader_matulonis.tar README.md log.txt makefile parser.c

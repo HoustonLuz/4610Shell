@@ -24,6 +24,7 @@ Division of Labor:
 Tar contents:
 	-makefile: makefile to compile parser.c into shell executable
 	-parser.c: Entire shell code based on parser template
+	-log.txt : Git commit log
 
 How to compile executables:
 	>make
