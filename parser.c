@@ -151,7 +151,7 @@ int main() {
 		else if(strcmp(instr.tokens[0],"cd") == 0){
 			if(chdir(resolvePath(instr.tokens[1])) != 0)
 			perror(resolvePath(instr.tokens[1]));
-		}		// end cd
+		}// end cd
 
 
 		else{
@@ -246,14 +246,19 @@ void Pipe(instruction* instr, int numPipes)
 	//Only dealing with cases of two pipes or less because of assumption 2 which states
 	//"No more than two pipes will appear in a single line"
 
-	int fd[2];
-	instruction instrs[2];
-	int i;
-	pid_t pids[2];
+	int fd1[2];
+	int fd2[4];
+	instruction instrs[3];
+	int i, j;
+	pid_t pids[3];
+	int status;
 
 	if(numPipes > 2){
 		printf("More than two pipes not implemented.\n");
+		return;
 	}
+
+	printf("numPipes - %d\n", numPipes);
 
 	for(i = 0;i < 2;i++){
 		instrs[i].tokens = NULL;
@@ -262,25 +267,30 @@ void Pipe(instruction* instr, int numPipes)
 
 	//Breaking instr into multiple instructions
 	i = 0;
-	do{
-		addToken(&instrs[0], instr->tokens[i]);
+	for(j = 0;j < numPipes;j++){
+		do{
+			addToken(&instrs[j], instr->tokens[i]);
+			i++;
+		} while (strcmp(instr->tokens[i], "|") != 0);
+		addNull(&instrs[0]);
+
 		i++;
-	} while (strcmp(instr->tokens[i], "|") != 0);
-	addNull(&instrs[0]);
-
-	i++;
+	}
 
 	do{
-		addToken(&instrs[1], instr->tokens[i]);
+		addToken(&instrs[j], instr->tokens[i]);
 		i++;
 	} while (i < instr->numTokens - 1);
-	addNull(&instrs[1]);
+	addNull(&instrs[j]);
+
+	for(i = 0;i < numPipes + 1;i++){
+		printTokens(&instrs[i]);
+	}
 
 	
 	//Code from slides for actual execution.
 	if(numPipes == 1){
-
-		pipe(fd);
+		pipe(fd1);
 
 		pids[0] = fork();
 		if(pids[0] == 0){
@@ -288,50 +298,34 @@ void Pipe(instruction* instr, int numPipes)
 			pids[1] = fork();
 			if(pids[1] == 0){
 				//cmd1 (Writer)
-				close(STDOUT_FILENO);
-				dup(fd[1]);
-				close(fd[0]);
-				close(fd[1]);
-				execute(instrs[0].tokens);
+				close(1);
+				dup(4);
+				close(3);
+				close(4);
+				execvp(resolveExec(instrs[0].tokens[0]), instrs[0].tokens);
 			} else {
 				//cmd2 (Reader)
-				close(STDIN_FILENO);
-				dup(fd[0]);
-				close(fd[0]);
-				close(fd[1]);
-				execute(instrs[1].tokens);
+				close(0);
+				dup(3);
+				close(3);
+				close(4);
+				execvp(resolveExec(instrs[1].tokens[0]), instrs[1].tokens);
 			}
 		} else {
 			//Parent(shell)
+			close(3);
+			close(4);
 		}
 
-		waitpid(pids[0]);
-		waitpid(pids[1]);
+		waitpid(pids[0], &status, 0);
+		waitpid(pids[1], &status, 0);
 
 	} else if(numPipes == 2){
-		if(fork() == 0){
-			//Child (cmd1 | cmd2)
-			pipe(fd);
-			if(fork() == 0){
-				//cmd1 (Writer)
-				close(STDOUT_FILENO);
-				dup(fd[1]);
-				close(fd[0]);
-				close(fd[1]);
-				execute(instrs[0].tokens);
-			} else {
-				//cmd2 (Reader)
-				close(STDIN_FILENO);
-				dup(fd[0]);
-				close(fd[0]);
-				close(fd[1]);
-				Pipe(&instrs[1], 2);
-			}
-		} else {
-			//Parent(shell)
-		}
-		waitpid(fd[0]);
-		waitpid(fd[1]);
+		/*
+		waitpid(pids[0], &status, 0);
+		waitpid(pids[1], &status, 0);
+		waitpid(pids[2], &status, 0);
+		*/
 	}
 
 
