@@ -14,10 +14,10 @@ Division of Labor:
 		-Part 5: PATH Resolution
 		-Part 8: Pipes
 		-Part 10: Built-ins (exit)
-
 	Brandon Matulonis
 		-Part 6: Execution
 		-Part 7: I/O Redirection
+		-Part 9: Background Processing
 		-Part 10: Built-ins (echo, cd)
 		-Documentation/README
 
@@ -39,6 +39,7 @@ Unfinished sections:
           through execvp, I've error checked these individual instructions and they aren't the issue. So it must
           be that I am closing the wrong file descriptors or using the wrong file descriptors as streams for some
 	  or all of the processes.
+	-jobs was not implemented before deadline
 
 Extra credit:
-	-Shell-ception: Our shell can continue to run the shell until exiting each one
+	-Shell-ception: Our shell can continue to run the shell until exiting each one [1]

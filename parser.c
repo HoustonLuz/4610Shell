@@ -26,10 +26,11 @@ void addNull(instruction* instr_ptr);
 char* resolvePath(char* path);
 char* resolveExec(char* path);
 void executep(char **cmd);
-void execute(char **cmd);
+void execute(char **cmd, int bg);
 
-void Redirect(instruction* instr);
+void Redirect(instruction* instr, int bg);
 void Pipe(instruction* instr, int numPipes);
+void Background(instruction* instr);
 
 int main() {
 	char* token = NULL;
@@ -144,14 +145,11 @@ int main() {
 			free(str);
 		} // end echo
 
-
-
 		// cd
 		else if(strcmp(instr.tokens[0],"cd") == 0){
 			if(chdir(resolvePath(instr.tokens[1])) != 0)
 			perror(resolvePath(instr.tokens[1]));
 		}// end cd
-
 
 		else{
 			pipeFlag = 0;
@@ -174,7 +172,9 @@ int main() {
 			//Simplistic if statements becuase assumption 5 states
 			//"Pipes and I/O redirection will not occur together"
 
-			if(pipeFlag == 1) {
+			if(groundFlag == 1) {
+				Background(&instr);
+			} else if(pipeFlag == 1) {
 				numPipes = 0;
 				stack = 0;
 				for(i = 0;i < instr.numTokens - 1;i++){
@@ -195,11 +195,9 @@ int main() {
 					Pipe(&instr, numPipes);
 				}
 			} else if (redirectFlag == 1) {
-				Redirect(&instr);
-			} else if (groundFlag == 1) {
-				printf("To be implemented.\n");
+				Redirect(&instr, 0);
 			} else{
-				execute(instr.tokens);
+				execute(instr.tokens, 0);
 			}
 		}
 
@@ -215,7 +213,7 @@ int main() {
 	return 0;
 }
 
-void Redirect(instruction* instr)
+void Redirect(instruction* instr, int bg)
 {
    int numIn = 0, numOut = 0;
    int t = 0;
@@ -276,7 +274,7 @@ void Redirect(instruction* instr)
          }
          t++;
       } while(numRedir > 0);
-      execute(instr->tokens);
+      execute(instr->tokens, bg);
       exit(1);
    }
    else
@@ -410,6 +408,39 @@ void Pipe(instruction* instr, int numPipes)
 
 	for(i = 0;i < 3;i++)
 		clearInstruction(&instrs[i]);
+
+}
+
+void Background(instruction* instr){
+   int t = 0;        
+   int q = 0;
+
+   if(strcmp(instr->tokens[0],"&") == 0){
+      // execute cmd in foreground, ignore &
+      do{   // shift instr left one token
+         instr->tokens[t] = instr->tokens[t+1];
+         t++;
+      } while(instr->tokens[t] != '\0');
+      execute(instr->tokens, 0);  
+      return;
+   }
+
+   t = 0;                 
+
+   // error checking 
+   do{             
+      if(strcmp(instr->tokens[t],"&") == 0){
+         printf("Error: Invalid syntax\n");
+         return;
+      }
+      t++;
+   } while(instr->tokens[t+1] != '\0');
+
+   if(strcmp(instr->tokens[instr->numTokens - 2],"&") == 0){
+      // execute cmd in background
+      instr->tokens[instr->numTokens - 2] = '\0';
+      execute(instr->tokens, 1);
+   }
 
 }
 
@@ -592,25 +623,35 @@ char* resolvePath(char* path)
 }
 
 // execution
-void execute(char **cmd){
-	int status;
-	pid_t pid = fork();
+void execute(char **cmd, int bg){
+   int status, q = 0;
+   pid_t pid = fork();
+   pid_t wp;    
 
-	if(pid == -1){
-		// Error
-		printf("ERROR\n");
-		exit(1);
-	}
-	else if (pid == 0){
-		// Child
-		execv(resolveExec(cmd[0]), cmd);
-		printf("Problem executing %s\n", cmd[0]);
-		exit(1);
-	}
-	else{
-		// Parent
-		waitpid(pid, &status, 0);
-	}
+   if(pid == -1){
+      // Error                           
+      printf("ERROR\n");              
+      exit(1);
+   }
+   else if (pid == 0){            
+      // Child
+      execv(resolveExec(cmd[0]), cmd);
+      printf("Problem executing %s\n", cmd[0]);             
+      exit(1);
+   }      
+   else{                  
+      // Parent
+      if(bg == 0) // foreground
+         waitpid(pid, &status, 0);
+      if(bg == 1){
+         q++;
+         wp = waitpid(pid, &status, WNOHANG);
+         printf("[%d]   [%d]\n", q, pid);
+         waitpid(pid, &status, 0);
+//       if(wp > 0)
+            printf("[%d]+  [%d]\n", q, cmd[0]);
+      }
+   }
 }
 
 //reallocates instruction array to hold another token
