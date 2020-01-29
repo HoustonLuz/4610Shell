@@ -34,7 +34,11 @@ Known bugs:
 	-alias is a built in bash, and alias was not included in the built ins we needed to make, so we didn't make it.
 
 Unfinished sections:
-	-double pipes
+	-double pipes coded as I would've thought it would work but it creates a second shell inside instead.
+          In my code I split the individual commands into individual instructions and then execute them
+          through execvp, I've error checked these individual instructions and they aren't the issue. So it must
+          be that I am closing the wrong file descriptors or using the wrong file descriptors as streams for some
+	  or all of the processes.
 
 Extra credit:
 	-Shell-ception: Our shell can continue to run the shell until exiting each one
